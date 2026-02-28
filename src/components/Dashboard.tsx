@@ -48,9 +48,6 @@ export default function Dashboard() {
 
             {/* News ticker */}
             <NewsTicker />
-
-            {/* News ticker */}
-            <NewsTicker />
         </div>
     );
 }
