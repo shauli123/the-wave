@@ -83,6 +83,16 @@ body {
   }
 }
 
+@keyframes ticker-scroll-ltr {
+  0% {
+    transform: translateX(0);
+  }
+
+  100% {
+    transform: translateX(-33.3333%);
+  }
+}
+
 .animate-ticker {
   animation: ticker-scroll 90s linear infinite;
   will-change: transform;
