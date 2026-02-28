@@ -23,6 +23,7 @@ export interface Alert {
     instructions: string;
     timestamp: string;
     receivedAt?: string;
+    title?: string;
 }
 
 export interface NewsItem {
@@ -95,15 +96,21 @@ export function getAlertLabel(alert: Alert): string {
     const baseLabel = ALERT_TYPE_LABELS[alert.type] || ALERT_TYPE_LABELS.unknown;
 
     // Specific logic for newsFlash (can be "Safe to leave shelter" or "Early Warning")
-    if (alert.type === 'newsFlash' && alert.instructions) {
-        if (alert.instructions.includes('ניתן לצאת מהמרחב המוגן') ||
-            alert.instructions.includes('סיום האירוע') ||
-            alert.instructions.includes('חזרה לשגרה')) {
-            return '✅ חזרה לשגרה / יציאה מהמרחב המוגן';
+    if (alert.type === 'newsFlash') {
+        if (alert.title) {
+            return `📢 ${alert.title}`; // Prioritize the official title from Pikud Haoref
         }
-        if (alert.instructions.includes('היכנסו למרחב מוגן') ||
-            alert.instructions.includes('התרעה מוקדמת')) {
-            return '📢 התרעה מוקדמת';
+
+        if (alert.instructions) {
+            if (alert.instructions.includes('ניתן לצאת מהמרחב המוגן') ||
+                alert.instructions.includes('סיום האירוע') ||
+                alert.instructions.includes('חזרה לשגרה')) {
+                return '✅ חזרה לשגרה / יציאה מהמרחב המוגן';
+            }
+            if (alert.instructions.includes('היכנסו למרחב מוגן') ||
+                alert.instructions.includes('התרעה מוקדמת')) {
+                return '📢 התרעה מוקדמת';
+            }
         }
     }
 

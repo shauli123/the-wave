@@ -15,6 +15,7 @@ export async function GET(req: NextRequest) {
     const cities = citiesParam ? citiesParam.split(',').map(c => c.trim()) : [];
 
     const instructionsParam = searchParams.get('instructions');
+    const titleParam = searchParams.get('title');
 
     // Optional offset in seconds (to simulate alerts from the past)
     const offset = Number(searchParams.get('offset') ?? 0);
@@ -23,6 +24,7 @@ export async function GET(req: NextRequest) {
     const mockAlert: Alert = {
         type,
         cities,
+        title: titleParam ?? undefined,
         instructions: instructionsParam ?? (type === 'none' ? '' : 'היכנסו למבנה, נעלו את הדלתות וסגרו את הדלתות והחלונות'),
         timestamp: issuedAt.toISOString(),
     };

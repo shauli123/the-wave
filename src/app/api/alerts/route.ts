@@ -50,6 +50,7 @@ export async function GET() {
                     type: alert?.type ?? 'none',
                     cities: alert?.cities ?? [],
                     instructions: alert?.instructions ?? '',
+                    title: (alert as any)?.title ?? undefined,
                     timestamp: new Date().toISOString(),
                 });
             }, options);
