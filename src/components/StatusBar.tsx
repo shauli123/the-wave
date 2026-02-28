@@ -1,7 +1,7 @@
 'use client';
 
 import { useAlert } from '@/context/AlertContext';
-import { ALERT_TYPE_LABELS } from '@/lib/alertTypes';
+import { ALERT_TYPE_LABELS, getAlertLabel } from '@/lib/alertTypes';
 import { useState, useRef, useEffect } from 'react';
 import RegionFilter from './RegionFilter';
 
@@ -65,7 +65,7 @@ export default function StatusBar() {
                         }`}>
                         <div className="flex items-center gap-2 text-sm font-bold animate-pulse">
                             <span className="w-2.5 h-2.5 rounded-full bg-white animate-ping" />
-                            {ALERT_TYPE_LABELS[currentAlert.type]}
+                            {getAlertLabel(currentAlert)}
                         </div>
                         {remainingShelterTime !== null && (
                             <div className="flex items-center gap-1.5 text-[11px] font-mono font-black border-t border-white/20 mt-1 pt-1">

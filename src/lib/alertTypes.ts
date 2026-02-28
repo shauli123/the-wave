@@ -91,6 +91,25 @@ export const ALERT_TYPE_LABELS: Record<AlertType, string> = {
     unknown: '❓ התרעה לא ידועה',
 };
 
+export function getAlertLabel(alert: Alert): string {
+    const baseLabel = ALERT_TYPE_LABELS[alert.type] || ALERT_TYPE_LABELS.unknown;
+
+    // Specific logic for newsFlash (can be "Safe to leave shelter" or "Early Warning")
+    if (alert.type === 'newsFlash' && alert.instructions) {
+        if (alert.instructions.includes('ניתן לצאת מהמרחב המוגן') ||
+            alert.instructions.includes('סיום האירוע') ||
+            alert.instructions.includes('חזרה לשגרה')) {
+            return '✅ חזרה לשגרה / יציאה מהמרחב המוגן';
+        }
+        if (alert.instructions.includes('היכנסו למרחב מוגן') ||
+            alert.instructions.includes('התרעה מוקדמת')) {
+            return '📢 התרעה מוקדמת';
+        }
+    }
+
+    return baseLabel;
+}
+
 /**
  * Time to reach shelter (זמן התגוננות) in seconds for common cities.
  * Default is 90 seconds if not listed.

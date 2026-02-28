@@ -1,7 +1,7 @@
 'use client';
 
 import { useAlert } from '@/context/AlertContext';
-import { ALERT_TYPE_LABELS, getAlertSeverity } from '@/lib/alertTypes';
+import { ALERT_TYPE_LABELS, getAlertLabel, getAlertSeverity } from '@/lib/alertTypes';
 
 export default function AlertLog() {
     const { alertLog, currentAlert, isAlarming } = useAlert();
@@ -31,7 +31,7 @@ export default function AlertLog() {
                             </div>
                         )}
                     </div>
-                    <p className="text-sm font-bold text-white leading-tight">{ALERT_TYPE_LABELS[currentAlert.type]}</p>
+                    <p className="text-sm font-bold text-white leading-tight">{getAlertLabel(currentAlert)}</p>
                     {currentAlert.cities.length > 0 && (
                         <p className="text-[11px] text-white/70 mt-1.5 font-mono leading-snug" dir="rtl">
                             {currentAlert.cities.slice(0, 8).join(' · ')}
@@ -72,7 +72,7 @@ export default function AlertLog() {
                                                 sev === 'drill' ? 'bg-blue-600/30 text-blue-300' :
                                                     'bg-white/10 text-white/50'
                                             }`}>
-                                            {ALERT_TYPE_LABELS[entry.type]}
+                                            {getAlertLabel(entry)}
                                         </span>
                                         <span className="text-xs font-mono text-white/30">{time}</span>
                                     </div>

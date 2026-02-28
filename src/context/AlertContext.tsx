@@ -125,6 +125,23 @@ export function AlertProvider({ children }: { children: React.ReactNode }) {
         }
     }, []);
 
+    // Play notification sound
+    const playNotification = useCallback(() => {
+        if (!audioCtxRef.current || !audioUnlocked) return;
+        const ctx = audioCtxRef.current;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(880, ctx.currentTime); // High pitch
+        gain.gain.setValueAtTime(0, ctx.currentTime);
+        gain.gain.linearRampToValueAtTime(0.2, ctx.currentTime + 0.05);
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
+        osc.start(ctx.currentTime);
+        osc.stop(ctx.currentTime + 0.5);
+    }, [audioUnlocked]);
+
     // Polling: alerts
     useEffect(() => {
         let mounted = true;
@@ -178,6 +195,7 @@ export function AlertProvider({ children }: { children: React.ReactNode }) {
                             setAlertLog(prev => [logEntry, ...prev].slice(0, MAX_LOG_SIZE));
 
                             if (alertSev === 'critical') playSiren();
+                            else if (alertSev === 'warning') playNotification();
                         } else {
                             // Already alarming, just sync timer
                             setRemainingShelterTime(prev => {
@@ -219,7 +237,7 @@ export function AlertProvider({ children }: { children: React.ReactNode }) {
         pollAlerts();
         const timer = setInterval(pollAlerts, POLL_ALERTS);
         return () => { mounted = false; clearInterval(timer); };
-    }, [selectedCities, audioUnlocked, playSiren, stopSiren, currentAlert]);
+    }, [selectedCities, audioUnlocked, playSiren, stopSiren, playNotification, currentAlert]);
 
     // Polling: news
     useEffect(() => {
