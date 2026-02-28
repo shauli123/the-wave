@@ -160,60 +160,68 @@ export function AlertProvider({ children }: { children: React.ReactNode }) {
                 if (alert.type !== 'none') {
                     console.log('[AlertContext] Received alert:', alert.type, alert.cities);
 
-                    const isRelevant =
-                        selectedCities.length === 0 ||
-                        alert.cities.some(c => selectedCities.includes(c));
+                    // Always process for the log
+                    const alertKey = `${alert.type}::${[...alert.cities].sort().join(',')}`;
+                    const alertWithTime = { ...alert, receivedAt: now.toISOString() };
 
-                    console.log('[AlertContext] Selection relevance check:', {
-                        selectedCities,
-                        isRelevant
-                    });
+                    if (alertKey !== lastAlertKey.current) {
+                        console.log('[AlertContext] New alert detected globally:', alertKey);
+                        lastAlertKey.current = alertKey;
 
-                    if (isRelevant) {
-                        const alertKey = `${alert.type}::${[...alert.cities].sort().join(',')}`;
-                        const alertSev = getAlertSeverity(alert.type);
+                        // Add to log globally
+                        const logEntry: AlertLogEntry = {
+                            ...alertWithTime,
+                            id: `${Date.now()}-${Math.random()}`,
+                            receivedAt: alertWithTime.receivedAt,
+                        };
+                        setAlertLog(prev => [logEntry, ...prev].slice(0, MAX_LOG_SIZE));
 
-                        const alertIssuedTime = new Date(alert.timestamp).getTime();
-                        const elapsedSeconds = Math.floor((now.getTime() - alertIssuedTime) / 1000);
-                        const totalShelterTime = getShelterTime(alert.cities);
-                        const calculatedRemaining = Math.max(0, totalShelterTime - elapsedSeconds);
+                        // Check if relevant for selected cities
+                        const isRelevant =
+                            selectedCities.length === 0 ||
+                            alert.cities.some(c => selectedCities.includes(c));
 
-                        if (alertKey !== lastAlertKey.current) {
-                            console.log('[AlertContext] New alert triggered!', alertKey);
-                            lastAlertKey.current = alertKey;
-                            const alertWithTime = { ...alert, receivedAt: now.toISOString() };
+                        if (isRelevant) {
+                            console.log('[AlertContext] Alert is relevant to selected region. Triggering alarm.');
+                            const alertSev = getAlertSeverity(alert.type);
+                            const alertIssuedTime = new Date(alert.timestamp).getTime();
+                            const elapsedSeconds = Math.floor((now.getTime() - alertIssuedTime) / 1000);
+                            const totalShelterTime = getShelterTime(alert.cities);
+                            const calculatedRemaining = Math.max(0, totalShelterTime - elapsedSeconds);
+
                             setCurrentAlert(alertWithTime);
                             setSeverity(alertSev);
                             setIsAlarming(true);
                             setRemainingShelterTime(calculatedRemaining);
 
-                            const logEntry: AlertLogEntry = {
-                                ...alertWithTime,
-                                id: `${Date.now()}-${Math.random()}`,
-                                receivedAt: alertWithTime.receivedAt,
-                            };
-                            setAlertLog(prev => [logEntry, ...prev].slice(0, MAX_LOG_SIZE));
-
                             if (alertSev === 'critical') playSiren();
                             else if (alertSev === 'warning') playNotification();
                         } else {
-                            // Already alarming, just sync timer
-                            setRemainingShelterTime(prev => {
-                                if (prev === null) return calculatedRemaining;
-                                if (Math.abs(prev - calculatedRemaining) > 2) return calculatedRemaining;
-                                return prev;
-                            });
-                        }
-                    } else {
-                        // Alert exists but not for our cities
-                        if (lastAlertKey.current !== 'none::' && currentAlert) {
-                            console.log('[AlertContext] Alert no longer relevant for selected cities');
-                            lastAlertKey.current = 'none::';
+                            console.log('[AlertContext] Alert not relevant to selected region. Logged only.');
+                            // Ensure alarm state is off if an irrelevant new alert arrives while old one was active
                             setCurrentAlert(null);
                             setIsAlarming(false);
                             setSeverity('none');
                             setRemainingShelterTime(null);
                             stopSiren();
+                        }
+                    } else if (isAlarming && currentAlert) {
+                        // Already alarming the relevant alert, just sync timer
+                        const isRelevant =
+                            selectedCities.length === 0 ||
+                            alert.cities.some(c => selectedCities.includes(c));
+
+                        if (isRelevant) {
+                            const alertIssuedTime = new Date(alert.timestamp).getTime();
+                            const elapsedSeconds = Math.floor((now.getTime() - alertIssuedTime) / 1000);
+                            const totalShelterTime = getShelterTime(alert.cities);
+                            const calculatedRemaining = Math.max(0, totalShelterTime - elapsedSeconds);
+
+                            setRemainingShelterTime(prev => {
+                                if (prev === null) return calculatedRemaining;
+                                if (Math.abs(prev - calculatedRemaining) > 2) return calculatedRemaining;
+                                return prev;
+                            });
                         }
                     }
                 } else {
