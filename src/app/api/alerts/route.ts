@@ -5,8 +5,8 @@ import { Alert } from '@/lib/alertTypes';
 // Exported for mock-alert/route.ts
 export function setMockAlert(alert: Alert | null) {
     if (alert) {
-        // Set mock with 1 hour TTL so it survives but doesn't stay forever
-        alertCache.set('mock_alert', alert, 3600);
+        // Set mock with 60 second TTL so it auto-expires and real alerts resume
+        alertCache.set('mock_alert', alert, 60);
         console.log('[/api/alerts] Mock alert set:', alert.cities.join(', '));
     } else {
         alertCache.del('mock_alert');

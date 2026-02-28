@@ -32,8 +32,8 @@ export async function GET(req: NextRequest) {
         alertCache.del('mock_alert');
         console.log('[/api/mock-alert] Mock cleared');
     } else {
-        // Set mock with a long TTL (1 hour) so it persists for testing
-        alertCache.set('mock_alert', mockAlert, 3600);
+        // Set mock with a short TTL (60s) so it auto-expires and real alerts resume
+        alertCache.set('mock_alert', mockAlert, 60);
         console.log('[/api/mock-alert] Mock set for', cities.join(', '));
     }
 
