@@ -3,6 +3,9 @@ import { newsCache } from '@/lib/cache';
 import { NewsItem } from '@/lib/alertTypes';
 import { XMLParser } from 'fast-xml-parser';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 30;
+
 const RSS_URL = 'https://www.ynet.co.il/Integration/StoryRss1854.xml';
 
 export async function GET() {

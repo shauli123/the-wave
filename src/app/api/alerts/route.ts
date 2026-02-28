@@ -2,6 +2,9 @@ import { NextResponse } from 'next/server';
 import { alertCache } from '@/lib/cache';
 import { Alert } from '@/lib/alertTypes';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 // Exported for mock-alert/route.ts
 export function setMockAlert(alert: Alert | null) {
     if (alert) {
