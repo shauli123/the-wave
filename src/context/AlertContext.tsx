@@ -23,6 +23,7 @@ interface AlertContextValue {
     connectionStatus: 'connected' | 'disconnected' | 'connecting';
     lastPollTime: Date | null;
     remainingShelterTime: number | null; // Seconds remaining to reach shelter
+    latestNewsFlash: Alert | null;
 }
 
 const AlertContext = createContext<AlertContextValue | null>(null);
@@ -42,6 +43,7 @@ export function AlertProvider({ children }: { children: React.ReactNode }) {
     const [connectionStatus, setConnectionStatus] = useState<'connected' | 'disconnected' | 'connecting'>('connecting');
     const [lastPollTime, setLastPollTime] = useState<Date | null>(null);
     const [remainingShelterTime, setRemainingShelterTime] = useState<number | null>(null);
+    const [latestNewsFlash, setLatestNewsFlash] = useState<Alert | null>(null);
 
     // Refs for dedup logic — track the last alert "fingerprint"
     const lastAlertKey = useRef<string>('none::');
@@ -168,13 +170,16 @@ export function AlertProvider({ children }: { children: React.ReactNode }) {
                         console.log('[AlertContext] New alert detected globally:', alertKey);
                         lastAlertKey.current = alertKey;
 
-                        // Add to log globally
                         const logEntry: AlertLogEntry = {
                             ...alertWithTime,
                             id: `${Date.now()}-${Math.random()}`,
                             receivedAt: alertWithTime.receivedAt,
                         };
                         setAlertLog(prev => [logEntry, ...prev].slice(0, MAX_LOG_SIZE));
+
+                        if (alert.type === 'newsFlash') {
+                            setLatestNewsFlash(alertWithTime);
+                        }
 
                         // Check if relevant for selected cities
                         const isRelevant =
@@ -292,6 +297,7 @@ export function AlertProvider({ children }: { children: React.ReactNode }) {
                 connectionStatus,
                 lastPollTime,
                 remainingShelterTime,
+                latestNewsFlash,
             }}
         >
             {children}

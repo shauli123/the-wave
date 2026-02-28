@@ -6,7 +6,7 @@ import { useState, useRef, useEffect } from 'react';
 import RegionFilter from './RegionFilter';
 
 export default function StatusBar() {
-    const { connectionStatus, lastPollTime, audioUnlocked, unlockAudio, currentAlert, isAlarming, severity, remainingShelterTime, selectedCities } = useAlert();
+    const { connectionStatus, lastPollTime, audioUnlocked, unlockAudio, currentAlert, isAlarming, severity, remainingShelterTime, selectedCities, latestNewsFlash } = useAlert();
     const [showFilter, setShowFilter] = useState(false);
     const filterButtonRef = useRef<HTMLButtonElement>(null);
 
@@ -77,9 +77,20 @@ export default function StatusBar() {
                         )}
                     </div>
                 ) : (
-                    <div className="flex items-center gap-2 px-4 py-1.5 rounded-full text-xs text-emerald-400 border border-emerald-500/30 bg-emerald-950/30">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-                        שגרה
+                    <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-2 px-4 py-1.5 rounded-full text-xs text-emerald-400 border border-emerald-500/30 bg-emerald-950/30 whitespace-nowrap">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                            שגרה
+                        </div>
+                        {latestNewsFlash && (
+                            <div className="hidden lg:flex items-center gap-2 px-4 py-1.5 rounded-full text-[11px] text-blue-300 border border-blue-500/30 bg-blue-950/30 max-w-[20rem]">
+                                <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse flex-shrink-0" />
+                                <span className="truncate" title={latestNewsFlash.instructions}>
+                                    <span className="font-bold opacity-80 pl-1">{getAlertLabel(latestNewsFlash)}</span>
+                                    {latestNewsFlash.instructions}
+                                </span>
+                            </div>
+                        )}
                     </div>
                 )}
             </div>
