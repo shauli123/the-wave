@@ -80,8 +80,24 @@ export default function RegionFilter({ onClose }: { onClose: () => void }) {
                 </div>
             </div>
 
-            {/* City list */}
-            <div className="max-h-64 overflow-y-auto scrollbar-thin p-1 grid grid-cols-1 gap-0.5">
+            {/* Filter Actions */}
+            <div className="flex items-center justify-between gap-2 mb-4">
+                <button
+                    onClick={() => setDraft(ALL_CITIES)}
+                    className="flex-1 py-1.5 text-[10px] font-bold text-blue-400 bg-blue-500/10 border border-blue-500/20 rounded-md hover:bg-blue-500/20 transition-colors"
+                >
+                    בחר הכל
+                </button>
+                <button
+                    onClick={() => setDraft([])}
+                    className="flex-1 py-1.5 text-[10px] font-bold text-white/40 bg-white/5 border border-white/10 rounded-md hover:bg-white/10 transition-colors"
+                >
+                    נקה הכל
+                </button>
+            </div>
+
+            {/* City List */}
+            <div className="max-h-60 overflow-y-auto pr-1 space-y-1 scrollbar-thin">
                 {/* Monitor All Button */}
                 <button
                     onClick={selectAll}

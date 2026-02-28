@@ -6,7 +6,7 @@ import { useState, useRef, useEffect } from 'react';
 import RegionFilter from './RegionFilter';
 
 export default function StatusBar() {
-    const { connectionStatus, lastPollTime, audioUnlocked, unlockAudio, currentAlert, isAlarming, severity, remainingShelterTime } = useAlert();
+    const { connectionStatus, lastPollTime, audioUnlocked, unlockAudio, currentAlert, isAlarming, severity, remainingShelterTime, selectedCities } = useAlert();
     const [showFilter, setShowFilter] = useState(false);
     const filterButtonRef = useRef<HTMLButtonElement>(null);
 
@@ -26,7 +26,6 @@ export default function StatusBar() {
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
             if (showFilter && filterButtonRef.current && !filterButtonRef.current.contains(event.target as Node)) {
-                // Check if target is inside the dropdown (dropdown is child of body or sibling)
                 const dropdown = document.getElementById('region-dropdown');
                 if (dropdown && !dropdown.contains(event.target as Node)) {
                     setShowFilter(false);
@@ -42,15 +41,16 @@ export default function StatusBar() {
             ? 'border-red-500/50 bg-red-950/40'
             : 'border-white/10 bg-surface-900/80'
             } backdrop-blur-md`}>
-            {/* Logo */}
-            <div className="flex items-center gap-3 min-w-0">
+
+            {/* Left: Logo */}
+            <div className="flex-1 flex items-center gap-3 min-w-0">
                 <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-400 to-cyan-500 flex items-center justify-center flex-shrink-0">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                         <path d="M2 12 C2 12 6 6 12 6 S22 12 22 12 S18 18 12 18 S2 12 2 12Z" />
                         <circle cx="12" cy="12" r="3" fill="currentColor" />
                     </svg>
                 </div>
-                <div>
+                <div className="hidden sm:block">
                     <h1 className="text-sm font-bold tracking-widest text-white uppercase font-mono">Silent Wave</h1>
                     <p className="text-[10px] text-white/40 font-mono tracking-tighter uppercase leading-none mt-0.5">גל שקט · לוח בקרה</p>
                 </div>
@@ -84,49 +84,58 @@ export default function StatusBar() {
                 )}
             </div>
 
-            {/* Right: Controls */}
-            <div className="flex items-center gap-3 flex-shrink-0">
+            {/* Right: Controls & Filter */}
+            <div className="flex-1 flex justify-end items-center gap-3">
+                {/* Active Filter Badge */}
+                {selectedCities.length > 0 && (
+                    <div className="hidden lg:flex items-center gap-1.5 px-2.5 py-1 rounded bg-blue-500/10 border border-blue-500/20 text-[10px] text-blue-400 font-bold whitespace-nowrap">
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                            <path d="M22 3H2l8 9v7l4 2v-9L22 3z" />
+                        </svg>
+                        <span>{selectedCities.length === 1 ? selectedCities[0] : `${selectedCities.length} ערים`}</span>
+                    </div>
+                )}
+
                 {/* Connection status */}
-                <div className="flex items-center gap-1.5">
-                    <span className={`w-2 h-2 rounded-full ${connectionColor} ${connectionStatus === 'connected' ? 'animate-pulse' : ''}`} />
-                    <span className="text-xs text-white/50 font-mono hidden sm:block">{formattedTime}</span>
-                    <span className="text-xs text-white/40 hidden md:block">{connectionLabel === 'Live' ? 'מחובר' : connectionLabel === 'Disconnected' ? 'מנותק' : 'מתחבר...'}</span>
+                <div className="hidden md:flex items-center gap-2 px-2 py-1 rounded bg-white/5 border border-white/10">
+                    <span className={`w-1.5 h-1.5 rounded-full ${connectionColor} ${connectionStatus === 'connected' ? 'animate-pulse' : ''}`} />
+                    <span className="text-[10px] text-white/40 font-mono">{formattedTime}</span>
                 </div>
 
-                {/* Audio unlock button */}
+                {/* Audio unlock */}
                 {!audioUnlocked ? (
                     <button
                         onClick={unlockAudio}
-                        className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-amber-500/20 border border-amber-500/40 text-amber-300 hover:bg-amber-500/30 transition-colors"
+                        className="flex items-center gap-1.5 text-[11px] px-3 py-1.5 rounded-lg bg-amber-500/20 border border-amber-500/40 text-amber-300 hover:bg-amber-500/30 transition-colors whitespace-nowrap"
                     >
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
                             <path d="M12 1l-8 4v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-10-4z" />
                         </svg>
-                        הפעל שמע
+                        <span className="hidden sm:inline">הפעל שמע</span>
                     </button>
                 ) : (
-                    <div className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400">
+                    <div className="flex items-center gap-1.5 text-[11px] px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400">
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
                             <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z" />
                         </svg>
-                        שמע פעיל
+                        <span className="hidden sm:inline">שמע פעיל</span>
                     </div>
                 )}
 
-                {/* Region filter button */}
+                {/* Region filter */}
                 <div className="relative">
                     <button
                         ref={filterButtonRef}
                         onClick={() => setShowFilter(!showFilter)}
-                        className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border transition-all duration-300 ${showFilter
-                            ? 'bg-blue-600/20 border-blue-500/50 text-blue-300 shadow-[0_0_15px_rgba(59,130,246,0.2)]'
+                        className={`flex items-center gap-1.5 text-[11px] px-3 py-1.5 rounded-lg border transition-all duration-400 ${showFilter
+                            ? 'bg-blue-600/20 border-blue-500/50 text-blue-300 shadow-[0_0_20px_rgba(59,130,246,0.3)] scale-105'
                             : 'bg-white/5 border-white/10 text-white/70 hover:bg-white/10 hover:text-white'
                             }`}
                     >
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                             <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
                         </svg>
-                        בחירת אזור
+                        <span className="hidden sm:inline">בחירת אזור</span>
                     </button>
 
                     {showFilter && (

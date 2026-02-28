@@ -46,21 +46,47 @@ export function AlertProvider({ children }: { children: React.ReactNode }) {
     // Refs for dedup logic — track the last alert "fingerprint"
     const lastAlertKey = useRef<string>('none::');
     const audioCtxRef = useRef<AudioContext | null>(null);
+    const audioBufferRef = useRef<AudioBuffer | null>(null);
     const sirenNodeRef = useRef<AudioBufferSourceNode | null>(null);
 
     // Load selected cities from localStorage
     useEffect(() => {
         try {
             const saved = localStorage.getItem('silentwave_cities');
-            if (saved) setSelectedCitiesState(JSON.parse(saved));
+            if (saved) {
+                const parsed = JSON.parse(saved);
+                console.log('[AlertContext] Loaded selected cities:', parsed);
+                setSelectedCitiesState(parsed);
+            }
         } catch { }
     }, []);
 
     const setSelectedCities = useCallback((cities: string[]) => {
+        console.log('[AlertContext] Setting selected cities:', cities);
         setSelectedCitiesState(cities);
         try {
             localStorage.setItem('silentwave_cities', JSON.stringify(cities));
         } catch { }
+    }, []);
+
+    // Load alert sound
+    useEffect(() => {
+        const loadSound = async () => {
+            try {
+                const response = await fetch('/alert.mp3');
+                if (!response.ok) throw new Error('Failed to fetch alert.mp3');
+                const arrayBuffer = await response.arrayBuffer();
+                if (!audioCtxRef.current) {
+                    audioCtxRef.current = new AudioContext();
+                }
+                const audioBuffer = await audioCtxRef.current.decodeAudioData(arrayBuffer);
+                audioBufferRef.current = audioBuffer;
+                console.log('[AlertContext] Audio buffer loaded');
+            } catch (err) {
+                console.error('[AlertContext] Error loading sound:', err);
+            }
+        };
+        loadSound();
     }, []);
 
     // Audio unlock
@@ -72,30 +98,20 @@ export function AlertProvider({ children }: { children: React.ReactNode }) {
             audioCtxRef.current.resume();
         }
         setAudioUnlocked(true);
+        console.log('[AlertContext] Audio unlocked');
     }, []);
 
-    // Synthesize siren
+    // Play alert sound
     const playSiren = useCallback(() => {
-        if (!audioCtxRef.current || !audioUnlocked) return;
+        if (!audioCtxRef.current || !audioUnlocked || !audioBufferRef.current) return;
         const ctx = audioCtxRef.current;
 
         if (sirenNodeRef.current) {
             try { sirenNodeRef.current.stop(); } catch { }
         }
 
-        const duration = 3;
-        const frameCount = ctx.sampleRate * duration;
-        const buffer = ctx.createBuffer(1, frameCount, ctx.sampleRate);
-        const data = buffer.getChannelData(0);
-
-        for (let i = 0; i < frameCount; i++) {
-            const t = i / ctx.sampleRate;
-            const freq = 800 + 200 * Math.sin(2 * Math.PI * 1.5 * t);
-            data[i] = 0.5 * Math.sin(2 * Math.PI * freq * t);
-        }
-
         const source = ctx.createBufferSource();
-        source.buffer = buffer;
+        source.buffer = audioBufferRef.current;
         source.loop = true;
         source.connect(ctx.destination);
         source.start();
@@ -121,29 +137,38 @@ export function AlertProvider({ children }: { children: React.ReactNode }) {
 
                 if (!mounted) return;
                 setConnectionStatus('connected');
-                setLastPollTime(new Date());
-
-                const alertKey = `${alert.type}::${[...alert.cities].sort().join(',')}`;
-                const alertSev = getAlertSeverity(alert.type);
+                const now = new Date();
+                setLastPollTime(now);
 
                 if (alert.type !== 'none') {
+                    console.log('[AlertContext] Received alert:', alert.type, alert.cities);
+
                     const isRelevant =
                         selectedCities.length === 0 ||
                         alert.cities.some(c => selectedCities.includes(c));
 
+                    console.log('[AlertContext] Selection relevance check:', {
+                        selectedCities,
+                        isRelevant
+                    });
+
                     if (isRelevant) {
+                        const alertKey = `${alert.type}::${[...alert.cities].sort().join(',')}`;
+                        const alertSev = getAlertSeverity(alert.type);
+
+                        const alertIssuedTime = new Date(alert.timestamp).getTime();
+                        const elapsedSeconds = Math.floor((now.getTime() - alertIssuedTime) / 1000);
+                        const totalShelterTime = getShelterTime(alert.cities);
+                        const calculatedRemaining = Math.max(0, totalShelterTime - elapsedSeconds);
+
                         if (alertKey !== lastAlertKey.current) {
+                            console.log('[AlertContext] New alert triggered!', alertKey);
                             lastAlertKey.current = alertKey;
-                            const alertWithTime = {
-                                ...alert,
-                                receivedAt: new Date().toISOString()
-                            };
+                            const alertWithTime = { ...alert, receivedAt: now.toISOString() };
                             setCurrentAlert(alertWithTime);
                             setSeverity(alertSev);
                             setIsAlarming(true);
-
-                            const shelterTime = getShelterTime(alert.cities);
-                            setRemainingShelterTime(shelterTime);
+                            setRemainingShelterTime(calculatedRemaining);
 
                             const logEntry: AlertLogEntry = {
                                 ...alertWithTime,
@@ -153,10 +178,29 @@ export function AlertProvider({ children }: { children: React.ReactNode }) {
                             setAlertLog(prev => [logEntry, ...prev].slice(0, MAX_LOG_SIZE));
 
                             if (alertSev === 'critical') playSiren();
+                        } else {
+                            // Already alarming, just sync timer
+                            setRemainingShelterTime(prev => {
+                                if (prev === null) return calculatedRemaining;
+                                if (Math.abs(prev - calculatedRemaining) > 2) return calculatedRemaining;
+                                return prev;
+                            });
+                        }
+                    } else {
+                        // Alert exists but not for our cities
+                        if (lastAlertKey.current !== 'none::' && currentAlert) {
+                            console.log('[AlertContext] Alert no longer relevant for selected cities');
+                            lastAlertKey.current = 'none::';
+                            setCurrentAlert(null);
+                            setIsAlarming(false);
+                            setSeverity('none');
+                            setRemainingShelterTime(null);
+                            stopSiren();
                         }
                     }
                 } else {
                     if (lastAlertKey.current !== 'none::') {
+                        console.log('[AlertContext] Clearing alerts (server returned none)');
                         lastAlertKey.current = 'none::';
                         setCurrentAlert(null);
                         setIsAlarming(false);
@@ -165,8 +209,9 @@ export function AlertProvider({ children }: { children: React.ReactNode }) {
                         stopSiren();
                     }
                 }
-            } catch {
+            } catch (err) {
                 if (!mounted) return;
+                console.error('[AlertContext] Poll error:', err);
                 setConnectionStatus('disconnected');
             }
         };
@@ -174,7 +219,7 @@ export function AlertProvider({ children }: { children: React.ReactNode }) {
         pollAlerts();
         const timer = setInterval(pollAlerts, POLL_ALERTS);
         return () => { mounted = false; clearInterval(timer); };
-    }, [selectedCities, audioUnlocked, playSiren, stopSiren]);
+    }, [selectedCities, audioUnlocked, playSiren, stopSiren, currentAlert]);
 
     // Polling: news
     useEffect(() => {
@@ -192,15 +237,19 @@ export function AlertProvider({ children }: { children: React.ReactNode }) {
         return () => { mounted = false; clearInterval(timer); };
     }, []);
 
-    // Shelter Countdown Timer
+    // Shelter Countdown Timer (Client-side smooth decrement)
     useEffect(() => {
-        if (isAlarming && remainingShelterTime !== null && remainingShelterTime > 0) {
-            const timer = setInterval(() => {
-                setRemainingShelterTime(prev => (prev !== null && prev > 0 ? prev - 1 : 0));
-            }, 1000);
-            return () => clearInterval(timer);
-        }
-    }, [isAlarming, remainingShelterTime]);
+        if (!isAlarming || remainingShelterTime === null || remainingShelterTime <= 0) return;
+
+        const interval = setInterval(() => {
+            setRemainingShelterTime(prev => {
+                if (prev === null || prev <= 0) return 0;
+                return prev - 1;
+            });
+        }, 1000);
+
+        return () => clearInterval(interval);
+    }, [isAlarming, remainingShelterTime === 0]);
 
     return (
         <AlertContext.Provider

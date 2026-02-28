@@ -2,27 +2,37 @@ import { NextResponse } from 'next/server';
 import { alertCache } from '@/lib/cache';
 import { Alert } from '@/lib/alertTypes';
 
-// Global mock alert state (also used by /api/mock-alert)
-export let mockAlert: Alert | null = null;
+// Exported for mock-alert/route.ts
 export function setMockAlert(alert: Alert | null) {
-    mockAlert = alert;
+    if (alert) {
+        // Set mock with 1 hour TTL so it survives but doesn't stay forever
+        alertCache.set('mock_alert', alert, 3600);
+        console.log('[/api/alerts] Mock alert set:', alert.cities.join(', '));
+    } else {
+        alertCache.del('mock_alert');
+        console.log('[/api/alerts] Mock alert cleared');
+    }
 }
 
 export async function GET() {
-    // Check cache first
+    // 1. Check for manual mock override (from /api/mock-alert)
+    const mock = alertCache.get<Alert>('mock_alert');
+    if (mock) {
+        if (mock.type === 'none') {
+            alertCache.del('mock_alert');
+        } else {
+            console.log('[/api/alerts] Returning MOCK alert');
+            return NextResponse.json(mock);
+        }
+    }
+
+    // 2. Check general cache (TTL 1s as defined in cache.ts)
     const cached = alertCache.get<Alert>('current');
     if (cached !== undefined) {
         return NextResponse.json(cached);
     }
 
-    // Use mock if enabled
-    if (mockAlert) {
-        alertCache.set('current', mockAlert);
-        return NextResponse.json(mockAlert);
-    }
-
     try {
-        // Dynamic import so pikud-haoref-api only runs server-side
         // eslint-disable-next-line @typescript-eslint/no-require-imports
         const pikudHaoref = require('pikud-haoref-api');
 
@@ -52,6 +62,6 @@ export async function GET() {
             instructions: '',
             timestamp: new Date().toISOString(),
         };
-        return NextResponse.json(fallback, { status: 200 });
+        return NextResponse.json(fallback);
     }
 }
